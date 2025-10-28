@@ -2,72 +2,183 @@
 import { LitElement, html } from 'https://unpkg.com/lit@2.6.1/index.js?module';
 import { styles } from './styles.js';
 
-class EmbyCard extends LitElement {
-  static properties = {
-    embyUrl: { type: String },
-    apiKey: { type: String },
-    movies: { type: Array },
-    series: { type: Array },
-    clients: { type: Array },
-    selectedMedia: { type: Object },
-    showClientModal: { type: Boolean }
-  };
-
-  static styles = styles;
-
+class EmbyCard extends HTMLElement {
   constructor() {
     super();
+    this.attachShadow({ mode: "open" });
     this.movies = [];
     this.series = [];
-    this.clients = [];
-    this.selectedMedia = null;
-    this.showClientModal = false;
   }
 
-  firstUpdated() {
-    this.fetchMedia();
-    this.fetchClients();
+  setConfig(config) {
+    if (!config.emby_url || !config.api_key) {
+      throw new Error("Bitte 'emby_url' und 'api_key' in der Konfiguration angeben.");
+    }
+
+    this.config = {
+      max_movies: config.max_movies || 10,
+      max_series: config.max_series || 10,
+      ...config
+    };
+
+    this._fetchData();
   }
 
-  // Medien abrufen (Filme + Serien)
-  async fetchMedia() {
-    if (!this.embyUrl || !this.apiKey) return;
+  async _fetchData() {
+    const { emby_url, api_key, max_movies, max_series } = this.config;
 
     try {
-      const moviesResp = await fetch(`${this.embyUrl}/emby/Items?IncludeItemTypes=Movie&Limit=10`, {
-        headers: { 'X-Emby-Token': this.apiKey }
-      });
-      const moviesData = await moviesResp.json();
-      this.movies = moviesData.Items || [];
+      // Filme abrufen
+      const movieRes = await fetch(`${emby_url}/emby/Items/Latest?IncludeItemTypes=Movie&Limit=${max_movies}&api_key=${api_key}`);
+      this.movies = await movieRes.json();
 
-      const seriesResp = await fetch(`${this.embyUrl}/emby/Items?IncludeItemTypes=Series&Limit=10`, {
-        headers: { 'X-Emby-Token': this.apiKey }
-      });
-      const seriesData = await seriesResp.json();
-      this.series = seriesData.Items || [];
+      // Serien abrufen
+      const seriesRes = await fetch(`${emby_url}/emby/Items/Latest?IncludeItemTypes=Series&Limit=${max_series}&api_key=${api_key}`);
+      this.series = await seriesRes.json();
+
+      this._render();
     } catch (err) {
-      console.error('Fehler beim Abrufen der Medien:', err);
+      console.error("Fehler beim Laden der Emby-Daten:", err);
+      this._renderError(err);
     }
   }
 
-  // Verfügbare Clients abrufen
-  async fetchClients() {
-    if (!this.embyUrl || !this.apiKey) return;
+  _render() {
+    if (!this.shadowRoot) return;
 
-    try {
-      const resp = await fetch(`${this.embyUrl}/emby/Sessions`, {
-        headers: { 'X-Emby-Token': this.apiKey }
-      });
-      const data = await resp.json();
-      this.clients = (data.Items || []).map(item => ({
-        id: item.Player?.Id,
-        name: item.UserName || item.Player?.Name
-      }));
-    } catch (err) {
-      console.error('Fehler beim Abrufen der Clients:', err);
-    }
+    const card = document.createElement("ha-card");
+    card.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+        ha-card {
+          background: rgba(0, 0, 0, 0.4);
+          color: white;
+          padding: 8px;
+        }
+        .section-title {
+          font-size: 1.1em;
+          font-weight: bold;
+          margin: 6px 0;
+        }
+        .media-row {
+          display: flex;
+          overflow-x: auto;
+          gap: 8px;
+          padding-bottom: 8px;
+        }
+        .media-item {
+          flex: 0 0 auto;
+          width: 100px;
+          position: relative;
+          cursor: pointer;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .media-item img {
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          border-radius: 8px;
+          transition: transform 0.3s;
+        }
+        .media-item:hover img {
+          transform: scale(1.05);
+        }
+        .overlay {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 6px;
+          background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        }
+        .title {
+          font-size: 0.9em;
+          font-weight: bold;
+          color: white;
+          text-shadow: 0 1px 2px black;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .description {
+          font-size: 0.8em;
+          opacity: 0.8;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      </style>
+
+      <div class="section">
+        <div class="section-title">🎬 Filme</div>
+        <div class="media-row">
+          ${this.movies.map(movie => `
+            <div class="media-item" title="${movie.Name}">
+              <img src="${this._getImageUrl(movie)}" alt="${movie.Name}" />
+              <div class="overlay">
+                <div class="title">${movie.Name}</div>
+                <div class="description">${movie.Overview ? movie.Overview : ''}</div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📺 Serien</div>
+        <div class="media-row">
+          ${this.series.map(show => `
+            <div class="media-item" title="${show.Name}">
+              <img src="${this._getImageUrl(show)}" alt="${show.Name}" />
+              <div class="overlay">
+                <div class="title">${show.Name}</div>
+                <div class="description">${show.Overview ? show.Overview : ''}</div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+
+    this.shadowRoot.innerHTML = "";
+    this.shadowRoot.appendChild(card);
   }
 
-  // Play-Button klicken
-  async playMedia(media) {
-    this.sele
+  _renderError(err) {
+    this.shadowRoot.innerHTML = `
+      <ha-card>
+        <div style="color:red; padding: 16px;">
+          ⚠️ Fehler beim Laden der Emby-Daten: ${err.message}
+        </div>
+      </ha-card>
+    `;
+  }
+
+  _getImageUrl(item) {
+    const { emby_url, api_key } = this.config;
+    return `${emby_url}/emby/Items/${item.Id}/Images/Primary?maxHeight=300&quality=90&api_key=${api_key}`;
+  }
+
+  set hass(hass) {
+    // nicht benötigt, aber Pflicht für HA-Kompatibilität
+  }
+
+  getCardSize() {
+    return 3;
+  }
+}
+
+// 🔹 Registrierung für Home Assistant
+customElements.define('emby-card', EmbyCard);
+
+// 🔹 Info für HACS
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "emby-card",
+  name: "Emby Card",
+  description: "Zeigt Filme und Serien aus Emby in zwei Reihen an."
+});
