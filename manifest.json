@@ -1,0 +1,11 @@
+{
+  "domain": "emby_card",
+  "name": "Emby Card",
+  "version": "1.0.0",
+  "documentation": "https://github.com/dein-user/emby-card",
+  "dependencies": [],
+  "codeowners": ["@dein-user"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "homeassistant": "2023.12.0"
+}
