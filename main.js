@@ -87,4 +87,16 @@ class EmbyCard extends HTMLElement {
 
   getImageUrl(item) {
     if (!item || !item.ImageTags || !item.ImageTags.Primary) return '';
-    return `${this.config.emby_url}/I_
+    return `${this.config.emby_url}/Items/${item.Id}/Images/Primary?api_key=${this.config.api_key}`;
+  }
+}
+
+customElements.define('emby-card', EmbyCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: 'emby-card',
+  name: 'Emby Card',
+  description: 'Zeigt die neuesten Filme und Serien von Emby an',
+  preview: true
+});
