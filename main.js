@@ -24,24 +24,48 @@ class EmbyCard extends HTMLElement {
     this._fetchData();
   }
 
-  async _fetchData() {
-    const { emby_url, api_key, max_movies, max_series } = this.config;
+async _fetchData() {
+  const { emby_url, api_key, max_movies, max_series } = this.config;
 
+  const tryFetch = async (path) => {
+    const res = await fetch(`${emby_url}${path}&api_key=${api_key}`);
+    const text = await res.text();
     try {
-      // Filme abrufen
-      const movieRes = await fetch(`${emby_url}/emby/Items/Latest?IncludeItemTypes=Movie&Limit=${max_movies}&api_key=${api_key}`);
-      this.movies = await movieRes.json();
-
-      // Serien abrufen
-      const seriesRes = await fetch(`${emby_url}/emby/Items/Latest?IncludeItemTypes=Series&Limit=${max_series}&api_key=${api_key}`);
-      this.series = await seriesRes.json();
-
-      this._render();
-    } catch (err) {
-      console.error("Fehler beim Laden der Emby-Daten:", err);
-      this._renderError(err);
+      return JSON.parse(text);
+    } catch {
+      console.warn("Antwort war kein JSON:", text.slice(0, 200));
+      return null;
     }
+  };
+
+  try {
+    // Filme
+    let movies = await tryFetch(`/emby/Items/Latest?IncludeItemTypes=Movie&Limit=${max_movies}`);
+    if (!movies) {
+      console.log("➡️ Fallback ohne /emby/");
+      movies = await tryFetch(`/Items/Latest?IncludeItemTypes=Movie&Limit=${max_movies}`);
+    }
+    this.movies = movies || [];
+
+    // Serien
+    let series = await tryFetch(`/emby/Items/Latest?IncludeItemTypes=Series&Limit=${max_series}`);
+    if (!series) {
+      console.log("➡️ Fallback ohne /emby/");
+      series = await tryFetch(`/Items/Latest?IncludeItemTypes=Series&Limit=${max_series}`);
+    }
+    this.series = series || [];
+
+    if (!this.movies.length && !this.series.length) {
+      throw new Error("Keine gültigen Daten von Emby erhalten. Prüfe API-URL oder API-Key.");
+    }
+
+    this._render();
+  } catch (err) {
+    console.error("Fehler beim Laden der Emby-Daten:", err);
+    this._renderError(err);
   }
+}
+
 
   _render() {
     if (!this.shadowRoot) return;
@@ -182,3 +206,4 @@ window.customCards.push({
   name: "Emby Card",
   description: "Zeigt Filme und Serien aus Emby in zwei Reihen an."
 });
+
