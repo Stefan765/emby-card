@@ -1,4 +1,4 @@
-// main-card.js – Emby-only version
+// main-card.js (Emby-only Mediarr style)
 
 import { EmbyMoviesSection } from './emby-movies-section.js';
 import { EmbySeriesSection } from './emby-series-section.js';
@@ -43,7 +43,6 @@ class MediarrCard extends HTMLElement {
       let sectionKey = null;
       if (key === 'emby_movies_entity') sectionKey = 'emby_movies';
       else if (key === 'emby_series_entity') sectionKey = 'emby_series';
-
       if (sectionKey && !sections.includes(sectionKey)) {
         sections.push(sectionKey);
       }
@@ -97,7 +96,7 @@ class MediarrCard extends HTMLElement {
   setConfig(config) {
     const hasEntity = config.emby_movies_entity || config.emby_series_entity;
     if (!hasEntity) {
-      throw new Error('Please define at least one Emby entity');
+      throw new Error('Bitte mindestens eine Emby-Entität definieren');
     }
 
     this.config = {
@@ -121,6 +120,108 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "mediarr-card",
   name: "Mediarr Emby Card",
-  description: "A simplified media card for Emby movies and series",
+  description: "Eine stilvolle Mediarr-Karte nur für Emby Filme & Serien",
   preview: true
 });
+🎬 emby-movies-section.js
+js
+Code kopieren
+// emby-movies-section.js
+export class EmbyMoviesSection {
+  constructor() {
+    this.sectionKey = 'emby_movies';
+  }
+
+  generateTemplate(config) {
+    const label = config.emby_movies_label || 'Filme';
+    return `
+      <div class="section" data-section="${this.sectionKey}">
+        <div class="section-header">
+          <div class="section-title">${label}</div>
+          <ha-icon class="section-toggle-icon" icon="mdi:chevron-down"></ha-icon>
+        </div>
+        <div class="section-content"></div>
+      </div>
+    `;
+  }
+
+  update(card, entity) {
+    const container = card.querySelector(`[data-section="${this.sectionKey}"] .section-content`);
+    if (!container) return;
+
+    const items = entity.attributes.data || [];
+    const maxItems = card.config.emby_movies_max_items || card.config.max_items || 10;
+
+    if (items.length === 0) {
+      container.innerHTML = `<div class="empty">Keine Filme gefunden</div>`;
+      return;
+    }
+
+    container.innerHTML = items
+      .slice(0, maxItems)
+      .map(item => `
+        <div class="media-item">
+          <div class="media-poster-wrapper">
+            <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
+          </div>
+          <div class="media-info">
+            <div class="media-title">${item.title}</div>
+            <div class="media-subtitle">${item.year || ''}</div>
+          </div>
+        </div>
+      `)
+      .join('');
+  }
+}
+📺 emby-series-section.js
+js
+Code kopieren
+// emby-series-section.js
+export class EmbySeriesSection {
+  constructor() {
+    this.sectionKey = 'emby_series';
+  }
+
+  generateTemplate(config) {
+    const label = config.emby_series_label || 'Serien';
+    return `
+      <div class="section" data-section="${this.sectionKey}">
+        <div class="section-header">
+          <div class="section-title">${label}</div>
+          <ha-icon class="section-toggle-icon" icon="mdi:chevron-down"></ha-icon>
+        </div>
+        <div class="section-content"></div>
+      </div>
+    `;
+  }
+
+  update(card, entity) {
+    const container = card.querySelector(`[data-section="${this.sectionKey}"] .section-content`);
+    if (!container) return;
+
+    const items = entity.attributes.data || [];
+    const maxItems = card.config.emby_series_max_items || card.config.max_items || 10;
+
+    if (items.length === 0) {
+      container.innerHTML = `<div class="empty">Keine Serien gefunden</div>`;
+      return;
+    }
+
+    container.innerHTML = items
+      .slice(0, maxItems)
+      .map(item => `
+        <div class="media-item">
+          <div class="media-poster-wrapper">
+            <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
+          </div>
+          <div class="media-info">
+            <div class="media-title">${item.title}</div>
+            <div class="media-subtitle">
+              ${item.series || ''} ${item.season ? 'S' + item.season : ''}${item.episode ? 'E' + item.episode : ''}
+            </div>
+          </div>
+        </div>
+      `)
+      .join('');
+  }
+}
