@@ -1,12 +1,11 @@
 // emby-series-section.js
-
 export class EmbySeriesSection {
   constructor() {
     this.sectionKey = 'emby_series';
   }
 
   generateTemplate(config) {
-    const label = config.emby_series_label || 'Emby Serien';
+    const label = config.emby_series_label || 'Serien';
     return `
       <div class="section" data-section="${this.sectionKey}">
         <div class="section-header">
@@ -34,9 +33,15 @@ export class EmbySeriesSection {
       .slice(0, maxItems)
       .map(item => `
         <div class="media-item">
-          <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
-          <div class="media-title">${item.title}</div>
-          <div class="media-subtitle">${item.season || ''} ${item.episode || ''}</div>
+          <div class="media-poster-wrapper">
+            <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
+          </div>
+          <div class="media-info">
+            <div class="media-title">${item.title}</div>
+            <div class="media-subtitle">
+              ${item.series || ''} ${item.season ? 'S' + item.season : ''}${item.episode ? 'E' + item.episode : ''}
+            </div>
+          </div>
         </div>
       `)
       .join('');
