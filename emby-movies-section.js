@@ -1,12 +1,11 @@
 // emby-movies-section.js
-
 export class EmbyMoviesSection {
   constructor() {
     this.sectionKey = 'emby_movies';
   }
 
   generateTemplate(config) {
-    const label = config.emby_movies_label || 'Emby Filme';
+    const label = config.emby_movies_label || 'Filme';
     return `
       <div class="section" data-section="${this.sectionKey}">
         <div class="section-header">
@@ -34,9 +33,13 @@ export class EmbyMoviesSection {
       .slice(0, maxItems)
       .map(item => `
         <div class="media-item">
-          <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
-          <div class="media-title">${item.title}</div>
-          <div class="media-subtitle">${item.year || ''}</div>
+          <div class="media-poster-wrapper">
+            <img src="${item.thumb || item.poster || ''}" alt="${item.title}" class="media-poster">
+          </div>
+          <div class="media-info">
+            <div class="media-title">${item.title}</div>
+            <div class="media-subtitle">${item.year || ''}</div>
+          </div>
         </div>
       `)
       .join('');
